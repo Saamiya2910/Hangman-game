@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hangman Party</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #f5f5f5;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1a1a;
+  user-select: none;
+}
+
+.screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  max-width: 480px;
+  padding: 1.5rem;
+  background: #fff;
+  border-radius: 1rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  margin: 1rem;
+}
+.screen.active { display: flex; }
+
+.title { font-size: 3rem; font-weight: 900; letter-spacing: 0.12em; color: #111; margin-bottom: 0.25rem; }
+.subtitle { font-size: 1rem; color: #666; margin-bottom: 1.5rem; }
+
+.input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 2px solid #ddd;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+  text-align: center;
+}
+.input:focus { border-color: #111; }
+.input-code { font-size: 1.5rem; letter-spacing: 0.2em; font-weight: 700; text-transform: uppercase; }
+
+.btn {
+  background: #111;
+  color: #fff;
+  border: none;
+  padding: 0.8rem 2.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { background: #333; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-secondary {
+  background: transparent;
+  color: #111;
+  border: 2px solid #111;
+}
+.btn-secondary:hover { background: #111; color: #fff; }
+.btn-small { padding: 0.5rem 1.2rem; font-size: 0.85rem; }
+.btn-sm { padding: 0.6rem 1.4rem; font-size: 0.9rem; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.flex-row { display: flex; gap: 0.75rem; align-items: center; width: 100%; }
+.flex-col { display: flex; flex-direction: column; gap: 0.75rem; width: 100%; }
+.gap-sm { gap: 0.5rem; }
+.mt-1 { margin-top: 1rem; }
+.mb-1 { margin-bottom: 1rem; }
+.text-sm { font-size: 0.85rem; color: #888; }
+.text-center { text-align: center; }
+
+.badge {
+  background: #f0f0f0;
+  padding: 0.3rem 0.8rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.room-code-display {
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  background: #f0f0f0;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.player-list { width: 100%; margin-bottom: 0.75rem; }
+.player-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.95rem;
+}
+.player-item:last-child { border-bottom: none; }
+.player-badge {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.game-status { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.5rem; }
+
+svg { width: 160px; height: 190px; margin-bottom: 0.75rem; }
+.part { opacity: 0; transition: opacity 0.3s ease; }
+.part.visible { opacity: 1; }
+
+.word-display {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.letter-box {
+  width: 2rem;
+  height: 2.5rem;
+  border-bottom: 3px solid #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+.letter-box.revealed { animation: popIn 0.3s ease; }
+@keyframes popIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.wrong-letters {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  min-height: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.wrong-letter {
+  color: #ccc;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: line-through;
+  text-decoration-color: #e03131;
+  text-decoration-thickness: 2px;
+}
+
+.keyboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+.key {
+  width: 2rem;
+  height: 2.3rem;
+  background: #fff;
+  border: 1.5px solid #ddd;
+  border-radius: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #111;
+}
+.key:hover:not(:disabled) { background: #f5f5f5; border-color: #bbb; }
+.key:disabled { cursor: not-allowed; }
+.key.correct { background: #e6f7e6; border-color: #4caf50; color: #2e7d32; }
+.key.wrong { background: #fdecea; border-color: #e03131; color: #c62828; }
+
+.guess-word-row {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+.guess-word-row input { flex: 1; text-align: center; text-transform: uppercase; letter-spacing: 0.1em; }
+
+.score-table { width: 100%; margin-bottom: 0.5rem; }
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+.score-row:last-child { border-bottom: none; }
+.score-row .highlight { font-weight: 700; }
+.score-row .pts { font-weight: 700; color: #e03131; }
+
+.feedback {
+  font-size: 0.85rem;
+  color: #e03131;
+  min-height: 1.25rem;
+}
+.feedback.ok { color: #2e7d32; }
+
+.round-badge {
+  display: inline-block;
+  background: #111;
+  color: #fff;
+  padding: 0.3rem 0.8rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.word-master-banner {
+  background: #fff3e0;
+  color: #e65100;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+}
+
+.wait-overlay {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 0.75rem;
+  text-align: center;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid #eee;
+  border-top: 3px solid #111;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 1rem auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.winner-announce {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+.winner-announce .emoji { font-size: 2rem; }
+.revealed-word {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+.menu-btn { width: 100%; max-width: 280px; padding: 1rem; font-size: 1.1rem; }
+
+@media (max-width: 420px) {
+  .title { font-size: 2.2rem; }
+  .room-code-display { font-size: 1.8rem; }
+  svg { width: 130px; height: 160px; }
+  .key { width: 1.75rem; height: 2rem; font-size: 0.75rem; }
+  .letter-box { width: 1.7rem; height: 2.2rem; font-size: 1.1rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="screen active" id="menuScreen">
+  <div class="title">HANGMAN</div>
+  <div class="subtitle">Party Edition</div>
+  <div class="flex-col" style="align-items:center;">
+    <button class="btn menu-btn" onclick="startSinglePlayer()">Single Player</button>
+    <div class="text-sm" style="margin:0.25rem 0;">— or —</div>
+    <button class="btn btn-secondary menu-btn" onclick="goMultiplayer()">Multiplayer</button>
+  </div>
+</div>
+
+<div class="screen" id="nicknameScreen">
+  <div class="title">HANGMAN</div>
+  <div class="subtitle">Multiplayer</div>
+  <div class="flex-col" style="max-width:300px;">
+    <input class="input" id="nickInput" placeholder="Enter your nickname" maxlength="15" autofocus>
+    <button class="btn" onclick="setNickname()">Continue</button>
+    <button class="btn btn-secondary btn-small mt-1" onclick="goBackToMenu()" style="font-size:0.85rem;">&#8592; Back</button>
+  </div>
+</div>
+
+<div class="screen" id="lobbyScreen">
+  <div class="title" style="font-size:2rem;">HANGMAN</div>
+  <div class="subtitle" style="margin-bottom:1.5rem;">Create or join a room</div>
+  <div class="flex-col" style="max-width:300px;">
+    <button class="btn" onclick="createRoom()">Create Room</button>
+    <div class="text-sm" style="margin:0.5rem 0;">— or —</div>
+    <input class="input input-code" id="joinCodeInput" placeholder="CODE" maxlength="4" style="text-align:center;">
+    <button class="btn btn-secondary" onclick="joinRoom()">Join Room</button>
+    <button class="btn btn-secondary btn-small mt-1" onclick="backToNickname()" style="font-size:0.85rem;">&#8592; Change Nickname</button>
+  </div>
+  <div class="feedback" id="lobbyFeedback"></div>
+</div>
+
+<div class="screen" id="waitingScreen">
+  <div class="text-sm mb-1">Room Code</div>
+  <div class="room-code-display" id="roomCodeDisplay"></div>
+  <div class="text-sm mb-1">Players</div>
+  <div class="player-list" id="waitingPlayers"></div>
+  <button class="btn" id="startBtn" onclick="startGame()">Start Game</button>
+  <button class="btn btn-secondary btn-small mt-1" onclick="leaveRoom()">Leave</button>
+</div>
+
+<div class="screen" id="wmScreen">
+  <div class="round-badge" id="wmRound"></div>
+  <div class="word-master-banner">You are the Word Master!</div>
+  <div class="text-sm mb-1">Choose a word for others to guess (2-12 letters)</div>
+  <div class="flex-row gap-sm" style="max-width:300px;">
+    <input class="input" id="wmWordInput" placeholder="Enter a word" maxlength="12" style="text-transform:lowercase;">
+    <button class="btn btn-small" onclick="submitWord()">Set</button>
+  </div>
+  <div class="feedback" id="wmFeedback"></div>
+</div>
+
+<div class="screen" id="waitGuessScreen">
+  <div class="round-badge" id="wgRound"></div>
+  <div class="spinner"></div>
+  <div class="text-sm" id="wgStatus">Word Master is choosing a word...</div>
+</div>
+
+<div class="screen" id="gameScreen">
+  <div class="game-header">
+    <div>
+      <span class="badge" id="gameRoundBadge"></span>
+      <span class="badge" id="gameWmBadge" style="margin-left:0.4rem;"></span>
+    </div>
+    <span class="text-sm" id="gameWrongCount"></span>
+  </div>
+  <div class="game-status" id="gameStatus"></div>
+  <div class="hint-badge" id="hintDisplay" style="font-size:0.85rem;color:#666;background:#f5f5f5;padding:0.4rem 1rem;border-radius:2rem;margin-bottom:0.5rem;display:none;"></div>
+
+  <svg viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+    <line x1="35" y1="210" x2="165" y2="210" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+    <line x1="70" y1="210" x2="70" y2="18" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+    <line x1="70" y1="18" x2="140" y2="18" stroke="#111" stroke-width="4" stroke-linecap="round"/>
+    <line x1="140" y1="18" x2="140" y2="45" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+    <circle id="p1" class="part" cx="140" cy="63" r="18" fill="none" stroke="#111" stroke-width="3"/>
+    <line id="p2" class="part" x1="140" y1="81" x2="140" y2="135" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+    <line id="p3" class="part" x1="140" y1="100" x2="117" y2="120" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+    <line id="p4" class="part" x1="140" y1="100" x2="163" y2="120" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+    <line id="p5" class="part" x1="140" y1="135" x2="122" y2="178" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+    <line id="p6" class="part" x1="140" y1="135" x2="158" y2="178" stroke="#111" stroke-width="3" stroke-linecap="round"/>
+    <g id="p7" class="part">
+      <circle cx="134" cy="58" r="2" fill="#111"/>
+      <circle cx="146" cy="58" r="2" fill="#111"/>
+    </g>
+    <path id="p8" class="part" d="M133 70 Q140 78 147 70" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+
+  <div class="word-display" id="gameWordDisplay"></div>
+  <div class="wrong-letters" id="gameWrongLetters"></div>
+  <div class="keyboard" id="gameKeyboard"></div>
+  <div class="guess-word-row">
+    <input class="input" id="wordGuessInput" placeholder="Guess the full word..." maxlength="15" style="text-transform:uppercase;">
+    <button class="btn btn-small" onclick="handleWordGuess()">Guess</button>
+  </div>
+  <div class="feedback" id="gameFeedback"></div>
+  <div class="score-table" id="gameScores"></div>
+  <button class="btn btn-secondary btn-small mt-1" id="spBackBtn" onclick="goBackToMenu()" style="display:none;">&#8592; Back to Menu</button>
+</div>
+
+<div class="screen" id="roundEndScreen">
+  <div class="winner-announce" id="roundWinnerText"></div>
+  <div class="revealed-word" id="roundRevealedWord"></div>
+  <div class="score-table" id="roundEndScores" style="max-width:300px;"></div>
+  <div class="text-sm" id="roundEndMsg"></div>
+  <button class="btn mt-1" id="nextRoundBtn" onclick="nextRound()">Next Round</button>
+</div>
+
+<div class="screen" id="gameOverScreen">
+  <div style="font-size:3rem;margin-bottom:0.5rem;">🏆</div>
+  <div class="winner-announce" id="gameWinnerText"></div>
+  <div class="score-table" id="finalScores" style="max-width:300px;margin-bottom:1rem;"></div>
+  <div class="flex-row" style="justify-content:center;">
+    <button class="btn btn-secondary btn-small" onclick="playAgain()">Play Again</button>
+    <button class="btn btn-secondary btn-small" onclick="backToLobby()">Back to Lobby</button>
+  </div>
+</div>
+
+<div class="screen" id="spGameOverScreen">
+  <div style="font-size:3rem;margin-bottom:0.5rem;" id="spResultEmoji"></div>
+  <div class="winner-announce" id="spResultText"></div>
+  <div class="revealed-word" id="spRevealedWord"></div>
+  <div class="flex-row" style="justify-content:center;">
+    <button class="btn btn-sm" onclick="startSinglePlayer()">Play Again</button>
+    <button class="btn btn-secondary btn-sm" onclick="goBackToMenu()">Menu</button>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+// ── Mode ──
+let mode = null; // 'sp' | 'mp'
+let myNick = '';
+let myRoom = '';
+let isWordMaster = false;
+let gameState = null;
+
+const SERVER = prompt('Server address? (leave blank for localhost:3000)') || 'http://localhost:3000';
+const socket = io(SERVER);
+
+// ── SP state ──
+const WORDS = [
+  { word: 'apple', hint: 'A common fruit, red or green' },
+  { word: 'beach', hint: 'Sandy shore by the ocean' },
+  { word: 'candy', hint: 'Sweet treat, often wrapped' },
+  { word: 'dance', hint: 'Moving rhythmically to music' },
+  { word: 'eagle', hint: 'A large bird of prey' },
+  { word: 'flame', hint: 'The visible part of fire' },
+  { word: 'grape', hint: 'Small fruit, used for wine' },
+  { word: 'house', hint: 'A building you live in' },
+  { word: 'igloo', hint: 'An ice shelter' },
+  { word: 'juice', hint: 'Liquid squeezed from fruit' },
+  { word: 'knife', hint: 'A tool for cutting' },
+  { word: 'lemon', hint: 'Sour yellow citrus fruit' },
+  { word: 'mango', hint: 'Tropical fruit, yellow inside' },
+  { word: 'noble', hint: 'Of high birth or rank' },
+  { word: 'ocean', hint: 'A vast body of salt water' },
+  { word: 'piano', hint: 'An instrument with black and white keys' },
+  { word: 'queen', hint: 'Female ruler of a kingdom' },
+  { word: 'river', hint: 'Flowing body of water' },
+  { word: 'snake', hint: 'A long legless reptile' },
+  { word: 'tiger', hint: 'Orange and black striped big cat' },
+  { word: 'ghost', hint: 'A spirit of the dead' },
+  { word: 'joker', hint: 'A playing card, or a comedian' },
+  { word: 'kayak', hint: 'A small narrow boat' },
+  { word: 'melon', hint: 'Large sweet fruit with rind' },
+  { word: 'nymph', hint: 'A mythical nature spirit' },
+  { word: 'opera', hint: 'A theatrical musical performance' },
+  { word: 'prank', hint: 'A playful trick on someone' },
+  { word: 'quilt', hint: 'A padded blanket' },
+  { word: 'sauce', hint: 'Liquid served with food' },
+  { word: 'towel', hint: 'Cloth for drying yourself' },
+  { word: 'uncle', hint: 'Your parent\'s brother' },
+  { word: 'vivid', hint: 'Bright and intense in color' },
+  { word: 'waltz', hint: 'A ballroom dance in 3/4 time' },
+  { word: 'brisk', hint: 'Quick and energetic' },
+  { word: 'crisp', hint: 'Firm and fresh, easily broken' },
+  { word: 'drift', hint: 'To float or be carried along' },
+  { word: 'ember', hint: 'A small glowing piece of fire' },
+  { word: 'flock', hint: 'A group of birds' },
+  { word: 'gland', hint: 'An organ that secretes substances' },
+  { word: 'hatch', hint: 'To emerge from an egg' },
+  { word: 'jewel', hint: 'A precious stone or gem' },
+  { word: 'knack', hint: 'A special skill or talent' },
+  { word: 'lapse', hint: 'A temporary failure of judgment' },
+  { word: 'mimic', hint: 'To imitate or copy closely' },
+  { word: 'nudge', hint: 'A gentle push' },
+  { word: 'plaza', hint: 'A public square or marketplace' },
+  { word: 'ranch', hint: 'A large farm for raising livestock' },
+  { word: 'savor', hint: 'To enjoy the taste fully' },
+  { word: 'tangy', hint: 'Having a sharp, zesty flavor' },
+  { word: 'usher', hint: 'One who guides people to seats' },
+  { word: 'visor', hint: 'A brim on a cap that shades the eyes' },
+  { word: 'wrist', hint: 'The joint between hand and arm' },
+  { word: 'abbey', hint: 'A building for monks or nuns' },
+  { word: 'baker', hint: 'A person who makes bread' },
+  { word: 'cabin', hint: 'A small, simple wooden house' },
+  { word: 'debut', hint: 'A first public appearance' },
+  { word: 'elbow', hint: 'The joint in the middle of your arm' },
+  { word: 'brain', hint: 'The organ inside your skull' },
+  { word: 'crane', hint: 'A tall bird or a lifting machine' },
+  { word: 'drake', hint: 'A male duck' },
+  { word: 'fable', hint: 'A short story with a moral' },
+  { word: 'grasp', hint: 'To hold firmly with your hand' },
+  { word: 'humor', hint: 'The quality of being funny' },
+  { word: 'kneel', hint: 'To rest on your knees' },
+  { word: 'lunar', hint: 'Related to the moon' },
+  { word: 'marsh', hint: 'A wetland area with grasses' },
+  { word: 'niece', hint: 'Your sibling\'s daughter' },
+  { word: 'pulse', hint: 'The rhythm of your heartbeat' },
+  { word: 'robin', hint: 'A small bird with a red breast' },
+  { word: 'blaze', hint: 'A very bright, strong fire' },
+  { word: 'chord', hint: 'A group of musical notes' },
+  { word: 'fjord', hint: 'A narrow sea inlet between cliffs' },
+  { word: 'vocal', hint: 'Related to the voice or singing' },
+  { word: 'amber', hint: 'Fossilized tree resin, golden-brown' },
+  { word: 'wreck', hint: 'The remains of something destroyed' },
+  { word: 'ultra', hint: 'Extreme or beyond the usual' },
+  { word: 'talon', hint: 'The claw of a bird of prey' },
+  { word: 'rebus', hint: 'A puzzle using pictures for words' },
+  { word: 'sable', hint: 'A dark black color' },
+  { word: 'lodge', hint: 'A cabin or inn in the woods' },
+  { word: 'heath', hint: 'An area of open, uncultivated land' },
+  { word: 'prank', hint: 'A playful mischief or trick' },
+  { word: 'opera', hint: 'A play set to music, sung' },
+  { word: 'quack', hint: 'The sound a duck makes' },
+  { word: 'stale', hint: 'No longer fresh' },
+  { word: 'trout', hint: 'A freshwater fish' },
+  { word: 'vault', hint: 'A secure room for valuables' },
+  { word: 'whirl', hint: 'To spin or rotate quickly' },
+  { word: 'youth', hint: 'The time of being young' },
+  { word: 'zonal', hint: 'Divided into zones or areas' },
+  { word: 'chase', hint: 'To run after someone or something' },
+  { word: 'dough', hint: 'A mixture for baking bread' },
+  { word: 'froth', hint: 'Bubbles formed on liquid' },
+  { word: 'glide', hint: 'To move smoothly and effortlessly' },
+  { word: 'hinge', hint: 'A joint on which a door swings' },
+];
+let spSecret = '';
+let spHint = '';
+let spGuessed = [];
+let spWrong = 0;
+const SP_MAX_WRONG = 8;
+
+function screen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) el.classList.add('active');
+}
+
+function feedback(el, msg, ok) {
+  const f = document.getElementById(el);
+  if (f) { f.textContent = msg; f.className = 'feedback' + (ok ? ' ok' : ''); }
+}
+
+// ── Navigation ──
+function goBackToMenu() {
+  if (mode === 'mp') {
+    socket.emit('leave_room');
+    myRoom = '';
+    isWordMaster = false;
+    gameState = null;
+  }
+  mode = null;
+  screen('menuScreen');
+}
+
+function goMultiplayer() {
+  mode = 'mp';
+  screen('nicknameScreen');
+  document.getElementById('nickInput').focus();
+}
+
+// ── Single Player ──
+function startSinglePlayer() {
+  mode = 'sp';
+  const entry = WORDS[Math.floor(Math.random() * WORDS.length)];
+  spSecret = entry.word.toUpperCase();
+  spHint = entry.hint;
+  spGuessed = [];
+  spWrong = 0;
+  document.getElementById('spBackBtn').style.display = '';
+  document.getElementById('gameScores').innerHTML = '';
+  drawSPGame();
+  screen('gameScreen');
+}
+
+function drawSPGame() {
+  const display = spSecret.split('').map(ch => spGuessed.includes(ch) ? ch : '_').join('');
+
+  document.getElementById('gameRoundBadge').textContent = 'Single Player';
+  document.getElementById('gameWmBadge').textContent = '';
+  document.getElementById('gameWrongCount').textContent = `Wrong: ${spWrong}/${SP_MAX_WRONG}`;
+  document.getElementById('gameStatus').textContent = spWrong >= SP_MAX_WRONG ? 'You lost!' : 'Guess the word!';
+
+  const hintEl = document.getElementById('hintDisplay');
+  hintEl.style.display = '';
+  hintEl.textContent = 'Hint: ' + spHint;
+
+  for (let i = 1; i <= 8; i++) {
+    const el = document.getElementById('p' + i);
+    if (el) i <= spWrong ? el.classList.add('visible') : el.classList.remove('visible');
+  }
+
+  const wd = document.getElementById('gameWordDisplay');
+  wd.innerHTML = '';
+  for (const ch of display) {
+    const box = document.createElement('div');
+    box.className = 'letter-box';
+    if (ch !== '_') { box.textContent = ch; box.classList.add('revealed'); }
+    wd.appendChild(box);
+  }
+
+  const wl = document.getElementById('gameWrongLetters');
+  wl.innerHTML = '';
+  for (const letter of spGuessed) {
+    if (!spSecret.includes(letter)) {
+      const span = document.createElement('span');
+      span.className = 'wrong-letter';
+      span.textContent = letter;
+      wl.appendChild(span);
+    }
+  }
+
+  const kb = document.getElementById('gameKeyboard');
+  kb.innerHTML = '';
+  const gameOver = spWrong >= SP_MAX_WRONG || !display.includes('_');
+  for (let code = 65; code <= 90; code++) {
+    const letter = String.fromCharCode(code);
+    const btn = document.createElement('button');
+    btn.className = 'key';
+    btn.textContent = letter;
+    if (spGuessed.includes(letter)) {
+      btn.disabled = true;
+      if (spSecret.includes(letter)) btn.classList.add('correct');
+      else btn.classList.add('wrong');
+    }
+    if (gameOver) btn.disabled = true;
+    btn.addEventListener('click', () => {
+      if (!btn.disabled) spHandleLetter(letter);
+    });
+    kb.appendChild(btn);
+  }
+
+  document.getElementById('gameFeedback').textContent = '';
+
+  document.querySelector('.guess-word-row').style.display = 'none';
+}
+
+function spHandleLetter(letter) {
+  if (spWrong >= SP_MAX_WRONG) return;
+  if (spGuessed.includes(letter)) return;
+  spGuessed.push(letter);
+
+  if (spSecret.includes(letter)) {
+    const display = spSecret.split('').map(ch => spGuessed.includes(ch) ? ch : '_').join('');
+    if (!display.includes('_')) {
+      drawSPGame();
+      setTimeout(showSPWin, 400);
+      return;
+    }
+  } else {
+    spWrong++;
+    if (spWrong >= SP_MAX_WRONG) {
+      drawSPGame();
+      setTimeout(showSPLose, 400);
+      return;
+    }
+  }
+  drawSPGame();
+}
+
+function handleWordGuess() {
+  if (mode === 'sp') return spHandleFullGuess();
+  guessWord();
+}
+
+function spHandleFullGuess() {
+  const input = document.getElementById('wordGuessInput');
+  const guess = input.value.trim().toUpperCase();
+  input.value = '';
+  if (!guess || guess.length < 2) return;
+  if (guess === spSecret) {
+    spGuessed = spSecret.split('');
+    drawSPGame();
+    setTimeout(showSPWin, 400);
+  } else {
+    feedback('gameFeedback', 'Wrong word!');
+  }
+}
+
+function showSPWin() {
+  screen('spGameOverScreen');
+  document.getElementById('spResultEmoji').textContent = '🎉';
+  document.getElementById('spResultText').textContent = 'You got it!';
+  document.getElementById('spRevealedWord').innerHTML = `${spSecret} <span style="font-size:0.9rem;color:#888;font-weight:400;">(${spHint})</span>`;
+}
+
+function showSPLose() {
+  screen('spGameOverScreen');
+  document.getElementById('spResultEmoji').textContent = '💀';
+  document.getElementById('spResultText').textContent = 'Game Over';
+  document.getElementById('spRevealedWord').innerHTML = `${spSecret} <span style="font-size:0.9rem;color:#888;font-weight:400;">(${spHint})</span>`;
+}
+
+// ── Multiplayer: Nickname ──
+function setNickname() {
+  const nick = document.getElementById('nickInput').value.trim();
+  if (!nick) return;
+  myNick = nick;
+  screen('lobbyScreen');
+  document.getElementById('lobbyFeedback').textContent = '';
+}
+
+function backToNickname() {
+  leaveRoom();
+  screen('nicknameScreen');
+}
+
+// ── Multiplayer: Lobby ──
+function createRoom() {
+  socket.emit('create_room', { nickname: myNick }, (res) => {
+    if (res.error) return feedback('lobbyFeedback', res.error);
+    myRoom = res.code;
+    screen('waitingScreen');
+  });
+}
+
+function joinRoom() {
+  const code = document.getElementById('joinCodeInput').value.toUpperCase();
+  if (!code || code.length < 4) return feedback('lobbyFeedback', 'Enter a room code');
+  socket.emit('join_room', { code, nickname: myNick }, (res) => {
+    if (res.error) return feedback('lobbyFeedback', res.error);
+    myRoom = res.code;
+    screen('waitingScreen');
+  });
+}
+
+// ── Multiplayer: Waiting room ──
+function startGame() {
+  socket.emit('start_game');
+}
+
+function leaveRoom() {
+  socket.emit('leave_room');
+  myRoom = '';
+  isWordMaster = false;
+  gameState = null;
+  screen('lobbyScreen');
+}
+
+// ── Multiplayer: Word Master ──
+function submitWord() {
+  const word = document.getElementById('wmWordInput').value.trim().toLowerCase();
+  if (!word || word.length < 2 || word.length > 12) {
+    return feedback('wmFeedback', '2-12 letters');
+  }
+  if (!/^[a-z]+$/.test(word)) return feedback('wmFeedback', 'Letters only');
+  socket.emit('submit_word', { word }, (res) => {
+    if (res.error) return feedback('wmFeedback', res.error);
+    feedback('wmFeedback', 'Word set!', true);
+  });
+}
+
+function guessWord() {
+  const input = document.getElementById('wordGuessInput');
+  const guess = input.value.trim();
+  if (!guess || guess.length < 2) return;
+  input.value = '';
+  socket.emit('make_guess', { guess }, (res) => {
+    if (res.error) return feedback('gameFeedback', res.error);
+    if (res.result === 'word_wrong') feedback('gameFeedback', 'Wrong word!', false);
+    else feedback('gameFeedback', '', true);
+  });
+}
+
+function nextRound() {
+  socket.emit('next_round');
+}
+
+function playAgain() {
+  socket.emit('play_again');
+}
+
+function backToLobby() {
+  leaveRoom();
+}
+
+// ── Multiplayer: Socket events ──
+socket.on('room_update', (data) => {
+  if (mode !== 'mp') return;
+  gameState = data;
+  isWordMaster = data.isWordMaster;
+
+  if (data.status === 'waiting' && document.getElementById('waitingScreen').classList.contains('active')) {
+    updateWaitingRoom(data);
+  }
+
+  if (data.status === 'playing') {
+    if (isWordMaster && !data.wordDisplay && !data.secretWord) {
+      screen('wmScreen');
+      document.getElementById('wmRound').textContent = `Round ${data.round}/${data.maxRounds}`;
+      document.getElementById('wmWordInput').value = '';
+      document.getElementById('wmFeedback').textContent = '';
+    } else if (isWordMaster && data.secretWord) {
+      showGameUI(data);
+    } else if (data.status === 'playing' && data.wordDisplay) {
+      showGameUI(data);
+    } else {
+      screen('waitGuessScreen');
+      document.getElementById('wgRound').textContent = `Round ${data.round}/${data.maxRounds}`;
+      document.getElementById('wgStatus').textContent = data.wordMasterNick
+        ? `${data.wordMasterNick} is choosing a word...`
+        : 'Word Master is choosing a word...';
+    }
+  }
+
+  if (data.status === 'roundEnd') {
+    showRoundEnd(data);
+  }
+
+  if (data.status === 'gameOver') {
+    showGameOver(data);
+  }
+});
+
+function updateWaitingRoom(data) {
+  const list = document.getElementById('waitingPlayers');
+  list.innerHTML = data.players.map(p => `
+    <div class="player-item">
+      <span>${p.nick} ${p.isHost ? '<span class="player-badge">Host</span>' : ''}</span>
+      <span class="text-sm">${p.connected ? '' : '❌'}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('roomCodeDisplay').textContent = data.code;
+  const btn = document.getElementById('startBtn');
+  const connected = data.players.filter(p => p.connected).length;
+  btn.disabled = connected < 2 || !data.players.find(p => p.isHost && p.connected);
+  btn.textContent = btn.disabled ? 'Waiting for players...' : 'Start Game';
+}
+
+function showGameUI(data) {
+  screen('gameScreen');
+  document.getElementById('spBackBtn').style.display = 'none';
+  document.getElementById('gameRoundBadge').textContent = `Round ${data.round}/${data.maxRounds}`;
+  document.getElementById('gameWmBadge').textContent = data.wordMasterNick ? `WM: ${data.wordMasterNick}` : '';
+  document.getElementById('gameWrongCount').textContent = `Wrong: ${data.wrongGuesses}/${data.maxWrong}`;
+  document.getElementById('gameStatus').textContent = isWordMaster
+    ? 'You are the Word Master — watching the chaos!'
+    : 'Guess the word!';
+
+  document.getElementById('hintDisplay').style.display = 'none';
+  document.querySelector('.guess-word-row').style.display = '';
+
+  for (let i = 1; i <= 8; i++) {
+    const el = document.getElementById('p' + i);
+    if (el) i <= data.wrongGuesses ? el.classList.add('visible') : el.classList.remove('visible');
+  }
+
+  const wd = document.getElementById('gameWordDisplay');
+  if (data.wordDisplay) {
+    wd.innerHTML = '';
+    for (const ch of data.wordDisplay) {
+      const box = document.createElement('div');
+      box.className = 'letter-box';
+      if (ch !== '_') { box.textContent = ch; box.classList.add('revealed'); }
+      wd.appendChild(box);
+    }
+  }
+
+  const wl = document.getElementById('gameWrongLetters');
+  wl.innerHTML = '';
+  if (data.wordDisplay) {
+    for (const letter of data.guessedLetters) {
+      if (!data.wordDisplay.includes(letter)) {
+        const span = document.createElement('span');
+        span.className = 'wrong-letter';
+        span.textContent = letter;
+        wl.appendChild(span);
+      }
+    }
+  }
+
+  const kb = document.getElementById('gameKeyboard');
+  kb.innerHTML = '';
+  for (let code = 65; code <= 90; code++) {
+    const letter = String.fromCharCode(code);
+    const btn = document.createElement('button');
+    btn.className = 'key';
+    btn.textContent = letter;
+    if (data.guessedLetters.includes(letter)) {
+      btn.disabled = true;
+      if (data.wordDisplay && data.wordDisplay.includes(letter)) {
+        btn.classList.add('correct');
+      } else {
+        btn.classList.add('wrong');
+      }
+    }
+    if (isWordMaster || data.status !== 'playing') btn.disabled = true;
+    btn.addEventListener('click', () => {
+      if (!btn.disabled) {
+        socket.emit('make_guess', { guess: letter });
+      }
+    });
+    kb.appendChild(btn);
+  }
+
+  updateScores('gameScores', data.scores);
+}
+
+function updateScores(elId, scores) {
+  const el = document.getElementById(elId);
+  if (!el || !scores) return;
+  el.innerHTML = '<div class="score-row" style="font-weight:700;font-size:0.8rem;color:#888;border-bottom:2px solid #ddd;">' +
+    '<span>Player</span><span>Score</span></div>' +
+    scores.sort((a, b) => b.score - a.score).map(s =>
+      `<div class="score-row"><span class="highlight">${s.nick}</span><span class="pts">${s.score}</span></div>`
+    ).join('');
+}
+
+function showRoundEnd(data) {
+  screen('roundEndScreen');
+  const hadWinner = !!data.winner;
+  document.getElementById('roundWinnerText').innerHTML = hadWinner
+    ? `<span class="emoji">🎉</span> ${data.winner} guessed it!`
+    : '<span class="emoji">💀</span> No one got it!';
+  document.getElementById('roundRevealedWord').textContent = data.secretWord || '???';
+  updateScores('roundEndScores', data.scores);
+  const btn = document.getElementById('nextRoundBtn');
+  if (data.round >= data.maxRounds) {
+    btn.textContent = 'See Results';
+    btn.disabled = false;
+  } else {
+    btn.textContent = 'Next Round';
+    btn.disabled = false;
+  }
+}
+
+function showGameOver(data) {
+  screen('gameOverScreen');
+  document.getElementById('gameWinnerText').textContent = `${data.winner} wins!`;
+  updateScores('finalScores', data.scores);
+}
+
+socket.on('error', (err) => {
+  console.error('Socket error:', err);
+});
+</script>
+</body>
+</html>
