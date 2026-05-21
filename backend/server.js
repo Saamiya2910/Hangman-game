@@ -285,6 +285,63 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('guess-full-word', ({ roomCode, word }) => {
+    const room = getRoom(roomCode);
+    if (!room || !room.roundActive || !room.currentWord) return;
+    if (socket.id === room.currentMaster) return;
+
+    const cleanWord = word.toUpperCase().replace(/[^A-Z]/g, '');
+    if (!cleanWord || cleanWord.length < 2) return;
+
+    if (cleanWord === room.currentWord) {
+      const player = room.players.find(p => p.id === socket.id);
+      if (player) player.score = (player.score || 0) + 1;
+      room.wordState = room.currentWord.split('').map(l => l + ':1');
+      room.roundActive = false;
+
+      io.to(roomCode).emit('guess-result', {
+        playerId: socket.id, letter: cleanWord, correct: true,
+        wordState: getMaskedWordState(room), wrongGuesses: [...room.wrongGuesses],
+        gameOver: true, winnerId: socket.id, winnerName: player ? player.name : 'Unknown'
+      });
+
+      setTimeout(() => {
+        io.to(roomCode).emit('round-end', {
+          winner: player ? player.name : 'Unknown', word: room.currentWord,
+          scores: room.players.map(p => ({ id: p.id, name: p.name, score: p.score }))
+        });
+        setTimeout(() => startNewRound(roomCode), 3000);
+      }, 1500);
+    } else {
+      room.wrongGuesses.push(cleanWord[0] || '?');
+      room.guessedLetters.push(cleanWord[0] || '?');
+
+      if (room.wrongGuesses.length >= 8) {
+        room.roundActive = false;
+        io.to(roomCode).emit('guess-result', {
+          playerId: socket.id, letter: cleanWord, correct: false,
+          wordState: getMaskedWordState(room), wrongGuesses: [...room.wrongGuesses],
+          gameOver: true, winnerId: null, winnerName: null
+        });
+
+        setTimeout(() => {
+          io.to(roomCode).emit('round-end', {
+            winner: null, word: room.currentWord,
+            scores: room.players.map(p => ({ id: p.id, name: p.name, score: p.score }))
+          });
+          setTimeout(() => startNewRound(roomCode), 3000);
+        }, 1500);
+        return;
+      }
+
+      io.to(roomCode).emit('guess-result', {
+        playerId: socket.id, letter: cleanWord, correct: false,
+        wordState: getMaskedWordState(room), wrongGuesses: [...room.wrongGuesses],
+        gameOver: false
+      });
+    }
+  });
+
   function endGame(roomCode) {
     const room = getRoom(roomCode);
     if (!room) return;

@@ -216,6 +216,11 @@
             <span class="label">Wrong:</span>
           </div>
 
+          <div style="display:flex;gap:8px;justify-content:center;margin-top:4px">
+            <input type="text" id="mpGuessInput" maxlength="30" placeholder="Type a letter or word..." autocomplete="off" style="padding:8px 14px;border:2px solid #dfe6e9;border-radius:10px;font-size:1rem;font-family:inherit;outline:none;width:200px;text-transform:uppercase;text-align:center">
+            <button onclick="var i=document.getElementById('mpGuessInput');MP.guessFullWord(i.value);i.value=''" style="padding:8px 16px;border:none;border-radius:10px;background:var(--accent);color:white;font-weight:700;cursor:pointer;font-family:inherit">Guess</button>
+          </div>
+
           <div class="guess-notification" id="mpGuessNotif" style="display:none"></div>
         </div>
       </div>

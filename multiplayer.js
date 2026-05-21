@@ -27,15 +27,16 @@ const MP = {
 
     this.socket = io(serverUrl, { transports: ['websocket', 'polling'] });
 
+    let fired = false;
     this.socket.on('connect', () => {
       this.playerId = this.socket.id;
       document.getElementById('mpError').style.display = 'none';
-      if (callback) callback();
+      if (!fired) { fired = true; if (callback) callback(); }
     });
 
     this.socket.on('connect_error', () => {
       const err = document.getElementById('mpError');
-      err.textContent = 'Cannot connect to server. Make sure it\'s running.';
+      err.textContent = 'Cannot connect to server. Make sure the server is running (node backend/server.js).';
       err.style.display = 'block';
     });
 
@@ -247,6 +248,11 @@ const MP = {
   guessLetter(letter) {
     if (this.isMaster && !this.isGuesserView) return;
     this.socket.emit('guess-letter', { roomCode: this.roomCode, letter });
+  },
+
+  guessFullWord(word) {
+    if (this.isMaster && !this.isGuesserView) return;
+    this.socket.emit('guess-full-word', { roomCode: this.roomCode, word: word.toUpperCase() });
   },
 
   renderMPWordDisplay() {
